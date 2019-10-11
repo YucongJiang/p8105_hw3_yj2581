@@ -1,0 +1,23 @@
+---
+title: "p8105_hw3_yj2581"
+author: "YucongJiang"
+date: "2019-10-11"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+```
+
+## Problem 1
+
+#### Describe the dataset
+
+```{r read_data}
+
+```
+
+
+
+
+
