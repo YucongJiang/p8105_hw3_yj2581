@@ -22,6 +22,7 @@ data("instacart")
 * The structure of `instacart` grouped by the variable `department` is shown below.
 
 ```{r show_structure, echo = FALSE}
+# show structure by departments
 structure_instacart <- instacart %>%
   group_by(department) %>%
   summarize(n = n())
@@ -46,10 +47,12 @@ knitr::kable(filter(instacart, order_id == 1))
 
 #### Do or answer the following
 
-###### The number of aisles, the aisles which the most items ordered from.
+###### The number of aisles, the aisle which the most items ordered from.
 
 ```{r aisle_count}
+# number of aisles
 length(unique(pull(instacart, aisle)))
+# the aisle which the most items ordered from
 instacart %>%
   group_by(aisle) %>%
   summarize(n = n()) %>%
@@ -60,6 +63,7 @@ instacart %>%
 ###### The plot of the number of items ordered in each aisle (>10000)
 
 ```{r plot_aisle}
+# split data from original dataset
 aisle_data <- instacart %>%
   group_by(aisle) %>%
   summarize(n = n()) %>%
@@ -68,7 +72,8 @@ aisle_data <- instacart %>%
   mutate(
     aisle = factor(aisle, levels = aisle)
   )
-  
+
+# create the bar-plot
 ggplot(aisle_data, aes(x = aisle, y = n, fill = aisle)) + 
   geom_bar(stat = "identity") +
   coord_flip() +
@@ -86,22 +91,28 @@ ggplot(aisle_data, aes(x = aisle, y = n, fill = aisle)) +
 ###### Show the 3 most popular items in aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”.
 
 ```{r show_table_1}
+# collect data based on the instruction
 table_data_1 <- instacart %>%
   filter(aisle == "baking ingredients" | aisle == "dog food care" | aisle == "packaged vegetables fruits") %>%
   group_by(aisle, product_name) %>%
   summarize(time_ordered = n()) %>%
   filter(time_ordered %in% sort(time_ordered, decreasing = TRUE)[1:3])
 
+# show the table
 knitr::kable(table_data_1)
 ```
 
 ###### Show mean hour of day at which Pink Lady Apples and Coffee Ice Cream are ordered
 
 ```{r show_table_2}
+# first assign a variable with the 7 days
 week <- c("Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday")
+
+# collect data for the table
 table_data_2 <- instacart %>%
   filter(product_name == "Pink Lady Apples" | product_name == "Coffee Ice Cream") %>%
   mutate(
+    # factorize day_of_week to maintain its order
     day_of_week = factor(week[order_dow+1], levels = week)
   ) %>%
   group_by(product_name, day_of_week) %>%
@@ -120,7 +131,11 @@ knitr::kable(table_data_2)
 
 ```{r read_brfss}
 data("brfss_smart2010")
+
+# assign a variable with response level
 response_level <- c("Poor","Fair","Good","Very good","Excellent")
+
+# load and tidy the data
 brfss <- brfss_smart2010 %>%
   janitor::clean_names() %>%
   filter(topic == "Overall Health") %>%
@@ -155,12 +170,14 @@ brfss %>%
 ###### Construct a dataset limited to "Excellent" response, create a "spaghetti" plot based on the instruction
 
 ```{r spaghetti_plot, warning = FALSE}
+# collect data based on instruction
 spaghetti_data <- brfss %>%
   filter(response == "Excellent") %>%
   select(year, locationabbr, data_value) %>%
   group_by(year, locationabbr) %>%
   summarize(average_data_value = mean(data_value))
 
+# create the plot
 ggplot(spaghetti_data, aes(x = year, y = average_data_value, color = locationabbr, group = locationabbr)) +
   geom_point() + geom_line() +
   labs(
@@ -174,11 +191,13 @@ ggplot(spaghetti_data, aes(x = year, y = average_data_value, color = locationabb
 ###### Show the distribution of `data_value` among locations in NY state in 2006 and 2010
 
 ```{r two_panel, warning = FALSE}
+# split data from original dataset
 two_panel_data <- brfss %>%
   filter(year == 2006 | year == 2010) %>%
   filter(locationabbr == "NY") %>%
   select(year, locationdesc, response, data_value)
 
+# create the plot and make it more reader-friendly
 ggplot(two_panel_data, aes(x = response, y = data_value, color = locationdesc, group = locationdesc)) +
   geom_point() + geom_line() +
   facet_grid(.~year) +
@@ -198,7 +217,10 @@ ggplot(two_panel_data, aes(x = response, y = data_value, color = locationdesc, g
 #### Load and tidy the data
 
 ```{r read_accel, message = FALSE, warning = FALSE}
+# assign a variable with the 7 days
 week_seq <- c("Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday")
+
+# clean the data
 accel <- read_csv("./data/accel_data.csv") %>%
   janitor::clean_names() %>%
   rename(day_show = day_id) %>%
@@ -219,6 +241,8 @@ accel <- read_csv("./data/accel_data.csv") %>%
   ) %>%
   select(day_id, day_show, week, day, weekday_or_weekend, minute_of_day, activity_count)
 ```
+
+###### Describe the data
 
 * The resulting dataset contains `r ncol(accel)` variables and `r nrow(accel)` observations.
 * The variables `day_id` represents the order in which the days were observed, supposing that **the experiment started from Sunday**.
