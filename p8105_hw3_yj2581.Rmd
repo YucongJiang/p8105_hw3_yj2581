@@ -7,6 +7,7 @@ output: github_document
 
 ```{r setup, include=FALSE}
 library(tidyverse)
+library(p8105.datasets)
 ```
 
 ## Problem 1
@@ -14,10 +15,258 @@ library(tidyverse)
 #### Describe the dataset
 
 ```{r read_data}
-
+data("instacart")
 ```
 
+* The dataset `instacart` has `r nrow(instacart)` observations and `r ncol(instacart)` variables.
+* The structure of `instacart` grouped by the variable `department` is shown below.
 
+```{r show_structure, echo = FALSE}
+structure_instacart <- instacart %>%
+  group_by(department) %>%
+  summarize(n = n())
+knitr::kable(structure_instacart)
+```
 
+* `order_id`, `product_id`, `user_id`, `aisle_id` and `department_id` are identifiers of  orders, products, customers, aisles and departments, respectively.
+* `order_dow` and `order_hour_of_day` indicate the time of order in a week.
+* `reordered` shows whether the product has been ordered by this customer before. 1:yes, 0:no
+* `days_since_prior_order` means the days since the last order, capped at 30 days. `NA` if it's the first order.
+
+For example, the first observations in the original datasets indicates that:
+  * A customer with id '112108' bought Bulgarian Yogurt at 10 am on a Thursday.
+  * It's not the first time he or she bought this product.
+  * It's the fourth time he or she made an order in Instacart.
+  * This customer just made an order 9 days before this one.
+  * From the first 8 observations we can also know that this customer bought 7 other products in the same order.
+  
+```{r show_first_8, echo = FALSE}
+knitr::kable(filter(instacart, order_id == 1))
+```
+
+#### Do or answer the following
+
+###### The number of aisles, the aisles which the most items ordered from.
+
+```{r aisle_count}
+length(unique(pull(instacart, aisle)))
+instacart %>%
+  group_by(aisle) %>%
+  summarize(n = n()) %>%
+  filter(n == max(n)) %>%
+  pull(aisle)
+```
+
+###### The plot of the number of items ordered in each aisle (>10000)
+
+```{r plot_aisle}
+aisle_data <- instacart %>%
+  group_by(aisle) %>%
+  summarize(n = n()) %>%
+  filter(n > 10000) %>%
+  arrange(n = desc(n)) %>%
+  mutate(
+    aisle = factor(aisle, levels = aisle)
+  )
+  
+ggplot(aisle_data, aes(x = aisle, y = n, fill = aisle)) + 
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(
+    title = "The Number of Items Ordered in Each Aisle",
+    x = "Aisle",
+    y = "Items ordered",
+    caption = "Data from Instacart"
+  ) +
+  theme(
+    legend.position = "none"
+  )
+```
+
+###### Show the 3 most popular items in aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”.
+
+```{r show_table_1}
+table_data_1 <- instacart %>%
+  filter(aisle == "baking ingredients" | aisle == "dog food care" | aisle == "packaged vegetables fruits") %>%
+  group_by(aisle, product_name) %>%
+  summarize(time_ordered = n()) %>%
+  filter(time_ordered %in% sort(time_ordered, decreasing = TRUE)[1:3])
+
+knitr::kable(table_data_1)
+```
+
+###### Show mean hour of day at which Pink Lady Apples and Coffee Ice Cream are ordered
+
+```{r show_table_2}
+week <- c("Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday")
+table_data_2 <- instacart %>%
+  filter(product_name == "Pink Lady Apples" | product_name == "Coffee Ice Cream") %>%
+  mutate(
+    day_of_week = factor(week[order_dow+1], levels = week)
+  ) %>%
+  group_by(product_name, day_of_week) %>%
+  summarize(mean_hour = round(mean(order_hour_of_day),1)) %>%
+  pivot_wider(
+    names_from = "day_of_week",
+    values_from = "mean_hour"
+  )
+
+knitr::kable(table_data_2)
+```
+
+## Problem 2
+
+#### Read and do some data cleaning
+
+```{r read_brfss}
+data("brfss_smart2010")
+response_level <- c("Poor","Fair","Good","Very good","Excellent")
+brfss <- brfss_smart2010 %>%
+  janitor::clean_names() %>%
+  filter(topic == "Overall Health") %>%
+  filter(response %in% response_level) %>%
+  mutate(
+    response = factor(response, levels = response_level, ordered = TRUE)
+  )
+```
+
+#### Do or answer the following
+
+###### Which states were observed at 7 or more locations in 2002 and 2010?
+
+```{r show_states}
+# result in 2002
+brfss %>%
+  filter(year == 2002) %>%
+  group_by(locationabbr) %>%
+  filter(length(unique(locationdesc))>=7) %>%
+  distinct(locationabbr) %>%
+  pull(locationabbr)
+
+# result in 2010
+brfss %>%
+  filter(year == 2010) %>%
+  group_by(locationabbr) %>%
+  filter(length(unique(locationdesc))>=7) %>%
+  distinct(locationabbr) %>%
+  pull(locationabbr)
+```
+
+###### Construct a dataset limited to "Excellent" response, create a "spaghetti" plot based on the instruction
+
+```{r spaghetti_plot, warning = FALSE}
+spaghetti_data <- brfss %>%
+  filter(response == "Excellent") %>%
+  select(year, locationabbr, data_value) %>%
+  group_by(year, locationabbr) %>%
+  summarize(average_data_value = mean(data_value))
+
+ggplot(spaghetti_data, aes(x = year, y = average_data_value, color = locationabbr, group = locationabbr)) +
+  geom_point() + geom_line() +
+  labs(
+    title = "Average Value of Each States from 2002 to 2010",
+    x = "Year",
+    y = "Average Value",
+    caption = "Data from Behavioral Risk Factors Surveillance System"
+  )
+```
+
+###### Show the distribution of `data_value` among locations in NY state in 2006 and 2010
+
+```{r two_panel, warning = FALSE}
+two_panel_data <- brfss %>%
+  filter(year == 2006 | year == 2010) %>%
+  filter(locationabbr == "NY") %>%
+  select(year, locationdesc, response, data_value)
+
+ggplot(two_panel_data, aes(x = response, y = data_value, color = locationdesc, group = locationdesc)) +
+  geom_point() + geom_line() +
+  facet_grid(.~year) +
+  labs(
+    title = "Distribution of data_value among locations in NY state in 2006 and 2010",
+    x = "Response",
+    y = "Value",
+    caption = "Data from Behavioral Risk Factors Surveillance System"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 45)
+  )
+```
+
+## Problem 3
+
+#### Load and tidy the data
+
+```{r read_accel, message = FALSE, warning = FALSE}
+week_seq <- c("Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday")
+accel <- read_csv("./data/accel_data.csv") %>%
+  janitor::clean_names() %>%
+  rename(day_show = day_id) %>%
+  mutate(
+    day = factor(day, levels = week_seq),
+    weekday_or_weekend = ifelse(day %in% c("Saturday","Sunday"), "weekend", "weekday"),
+    day_id = (week - 1) * 7 + as.numeric(day)
+  ) %>%
+  arrange(week, day) %>%
+  pivot_longer(
+    activity_1:activity_1440,
+    names_to = "minute_of_day",
+    names_prefix = "activity_",
+    values_to = "activity_count"
+  ) %>%
+  mutate(
+    minute_of_day = as.numeric(minute_of_day)
+  ) %>%
+  select(day_id, day_show, week, day, weekday_or_weekend, minute_of_day, activity_count)
+```
+
+* The resulting dataset contains `r ncol(accel)` variables and `r nrow(accel)` observations.
+* The variables `day_id` represents the order in which the days were observed, supposing that **the experiment started from Sunday**.
+* **The `day_show` is the original `day_id`**, which is the order in which they appear in the original dataset.
+* `weekday_or_weekend` shows whether the day is weekend or weekday.
+* `minute_of_day` and `activity_count` are transformed from the original activity.*.
+
+#### Aggregate the activity counts accross minutes
+
+```{r aggregate_count}
+accel_aggregate <- accel %>%
+  group_by(week, day) %>%
+  summarize(activity_total = sum(activity_count)) %>%
+  pivot_wider(
+    names_from = "day",
+    values_from = "activity_total"
+  )
+
+knitr::kable(accel_aggregate)
+```
+
+There are some outliers in this table, i.e. Monday in Week 1, Sunday in Week 5, Fridayin Week 4 and Saturday in Week 4 and 5. Maybe the participant took off the accelerometers for a long time in these days.
+
+#### Show 24-hour activity time courses for each day
+
+```{r activity_hour}
+accel_hour <- accel %>%
+  mutate(
+    hour_of_experiment = 24 * (day_id - 1) + ceiling(minute_of_day/60.0) - 1
+  ) %>%
+  group_by(day_id, day, hour_of_experiment) %>%
+  summarize(activity_hour = sum(activity_count))
+
+ggplot(accel_hour, aes(x = hour_of_experiment, y = activity_hour, group = day_id)) +
+  geom_line(aes(color = day)) +
+  labs(
+    title = "24-Hour Activity Time Courses For Each Day",
+    x = "Hour of Experiment",
+    y = "Activity Count",
+    caption = "Data from CUMC"
+  )
+```
+
+From the plot we know that
+
+* Generally, the activity counts are low at night and high during the day.
+* There are some periods in which the activity counts are extremely low. We suppose that the participant took the accelerometer off during those times.
+* There are also some periods in which the counts are extremely high. We suppose that the participant did physical activities during those times.
+* There is no explicit pattern about on which day the participant did the physical activities.
 
 
